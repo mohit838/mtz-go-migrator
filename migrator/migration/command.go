@@ -5,6 +5,8 @@ import (
 	"fmt"
 )
 
+// Run processes the command-line arguments and dispatches them to the corresponding Runner method.
+// Returns an error if the command is unrecognized, missing parameters, or if the execution fails.
 func (r *Runner) Run(ctx context.Context, args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("%s", Usage())
@@ -30,6 +32,8 @@ func (r *Runner) Run(ctx context.Context, args []string) error {
 	}
 }
 
+// NeedsDatabase checks if the command-line arguments require an active database connection.
+// Returns false for commands like make, create, new, help, and true for up, status, rollback.
 func NeedsDatabase(args []string) bool {
 	if len(args) == 0 {
 		return false
@@ -43,6 +47,7 @@ func NeedsDatabase(args []string) bool {
 	}
 }
 
+// Usage returns the standard CLI help and commands usage string.
 func Usage() string {
 	return `usage: go run ./cmd/migrate [command] [name]
 

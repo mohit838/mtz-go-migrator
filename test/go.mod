@@ -6,10 +6,10 @@ require (
 	github.com/go-chi/chi/v5 v5.3.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/joho/godotenv v1.5.1
-	github.com/mohit838/learn-go-with-project/libs/migrator v0.0.0
+	github.com/mohit838/mtz-migrator/migrator v0.0.0
 )
 
-replace github.com/mohit838/learn-go-with-project/libs/migrator => ../libs/migrator
+replace github.com/mohit838/mtz-migrator/migrator => ../migrator
 
 require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect

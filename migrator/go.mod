@@ -1,3 +1,3 @@
-module github.com/mohit838/learn-go-with-project/libs/migrator
+module github.com/mohit838/mtz-migrator/migrator
 
 go 1.26.3

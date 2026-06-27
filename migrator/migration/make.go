@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+// Make creates a pair of migration files (timestamp_name.up.sql and timestamp_name.down.sql) in the configured migrations directory.
+// The name parameter is sanitized to lowercase and underscores.
 func (r *Runner) Make(name string) error {
 	cleanName := sanitizeName(name)
 	if cleanName == "" {

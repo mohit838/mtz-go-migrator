@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+// Runner handles the execution of migrations, status checks, and rollbacks.
 type Runner struct {
 	db          *sql.DB
 	dir         string
@@ -20,11 +21,17 @@ type Runner struct {
 	now         func() time.Time
 }
 
+// Config provides configuration options for the migration Runner.
 type Config struct {
+	// Dir is the directory where migration SQL files are located. Defaults to "migrations".
 	Dir         string
+	// TableName is the database table name used to track applied migrations. Defaults to "schema_migrations".
 	TableName   string
+	// ServiceName is an optional identifier prefixed to log lines and stored in the tracking table.
 	ServiceName string
+	// Writer specifies where logs and outputs should be written. Defaults to os.Stdout.
 	Writer      io.Writer
+	// Now is a function returning the current time. Used for generating timestamps. Defaults to time.Now.
 	Now         func() time.Time
 }
 
@@ -43,6 +50,8 @@ type appliedMigration struct {
 	checksum string
 }
 
+// NewRunner creates and returns a new migration Runner with the given configuration.
+// The db parameter can be nil for commands that do not require a database connection (e.g., make, help).
 func NewRunner(db *sql.DB, cfg Config) *Runner {
 	if cfg.Dir == "" {
 		cfg.Dir = "migrations"
@@ -66,6 +75,8 @@ func NewRunner(db *sql.DB, cfg Config) *Runner {
 	}
 }
 
+// Up runs all pending migrations in chronological order.
+// It assigns a new batch number for the migrations applied in this execution.
 func (r *Runner) Up(ctx context.Context) error {
 	if err := r.ensureStore(ctx); err != nil {
 		return err
@@ -102,6 +113,7 @@ func (r *Runner) Up(ctx context.Context) error {
 	return nil
 }
 
+// Rollback rolls back all migrations belonging to the most recent batch.
 func (r *Runner) Rollback(ctx context.Context) error {
 	if err := r.ensureStore(ctx); err != nil {
 		return err
@@ -140,6 +152,7 @@ func (r *Runner) Rollback(ctx context.Context) error {
 	return nil
 }
 
+// Status outputs the state of all migration files (pending or applied with batch number) to the configured writer.
 func (r *Runner) Status(ctx context.Context) error {
 	if err := r.ensureStore(ctx); err != nil {
 		return err

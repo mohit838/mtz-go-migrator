@@ -8,7 +8,7 @@ import (
 
 	"github.com/mohit838/learn-go-with-project/internal/config"
 	"github.com/mohit838/learn-go-with-project/internal/database"
-	"github.com/mohit838/learn-go-with-project/migrator/migration"
+	"github.com/mohit838/mtz-migrator/migrator/migration"
 )
 
 func main() {

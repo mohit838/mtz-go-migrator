@@ -72,7 +72,7 @@ This repository is organized as a monorepo containing both the core library and 
 ## Installation
 
 ```sh
-go get github.com/mohit838/mtz-migrator/migrator/migration
+go get github.com/mohit838/mtz-go-migrator/migrator/migration
 ```
 
 Requires Go 1.21 or later. The library itself has **zero external dependencies**. Your application is responsible for importing the database driver (e.g., `github.com/jackc/pgx/v5/stdlib`).
@@ -100,7 +100,7 @@ import (
     "os"
 
     _ "github.com/jackc/pgx/v5/stdlib"
-    "github.com/mohit838/mtz-migrator/migrator/migration"
+    "github.com/mohit838/mtz-go-migrator/migrator/migration"
 )
 
 func main() {

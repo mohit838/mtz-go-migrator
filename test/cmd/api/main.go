@@ -5,9 +5,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/mohit838/learn-go-with-project/internal/config"
-	"github.com/mohit838/learn-go-with-project/internal/database"
-	"github.com/mohit838/learn-go-with-project/internal/router"
+	"github.com/mohit838/mtz-go-migrator/test/internal/config"
+	"github.com/mohit838/mtz-go-migrator/test/internal/database"
+	"github.com/mohit838/mtz-go-migrator/test/internal/router"
 )
 
 func main() {

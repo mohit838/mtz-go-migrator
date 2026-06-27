@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/mohit838/learn-go-with-project/internal/constants"
+	"github.com/mohit838/mtz-go-migrator/test/internal/constants"
 )
 
 // NewRouter builds and returns the HTTP handler for the migrator test service.

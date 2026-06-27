@@ -12,7 +12,7 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/joho/godotenv"
-	"github.com/mohit838/mtz-migrator/migrator/migration"
+	"github.com/mohit838/mtz-go-migrator/migrator/migration"
 )
 
 func TestMigrationIntegration(t *testing.T) {

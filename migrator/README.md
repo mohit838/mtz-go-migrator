@@ -1,4 +1,4 @@
-# mtz-migrator
+# mtz-go-migrator
 
 A lightweight, dependency-free SQL migration library for Go.
 
@@ -40,7 +40,7 @@ Built for PostgreSQL via Go's standard `database/sql` interface.
 **1. Add the library to your project:**
 
 ```sh
-go get github.com/mohit838/mtz-migrator/migrator/migration
+go get github.com/mohit838/mtz-go-migrator/migrator/migration
 ```
 
 **2. Create the migration CLI entry point:**
@@ -62,7 +62,7 @@ import (
     "os"
 
     _ "github.com/jackc/pgx/v5/stdlib"
-    "github.com/mohit838/mtz-migrator/migrator/migration"
+    "github.com/mohit838/mtz-go-migrator/migrator/migration"
 )
 
 func main() {
@@ -115,7 +115,7 @@ That's it. ✅
 ## Installation
 
 ```sh
-go get github.com/mohit838/mtz-migrator/migrator/migration
+go get github.com/mohit838/mtz-go-migrator/migrator/migration
 ```
 
 Requires Go 1.21 or later.

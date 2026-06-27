@@ -1,4 +1,4 @@
-# Contributing to mtz-migrator
+# Contributing to mtz-go-migrator
 
 Thank you for considering contributing! This document explains how to set up your environment, run tests, and submit changes.
 
@@ -34,20 +34,20 @@ Keep discussions focused on technical merit. Constructive criticism is fine; per
 **Clone the repo:**
 
 ```sh
-git clone https://github.com/mohit838/mtz-migrator.git
-cd mtz-migrator
+git clone https://github.com/mohit838/mtz-go-migrator.git
+cd mtz-go-migrator
 ```
 
 **The library lives in:**
 
 ```
-libs/migrator/migration/
+migrator/migration/
 ```
 
 **The test app lives in:**
 
 ```
-testLibs/
+test/
 ```
 
 ---
@@ -57,7 +57,7 @@ testLibs/
 ### Unit tests (no database needed)
 
 ```sh
-cd libs/migrator
+cd migrator
 go test ./...
 ```
 
@@ -68,7 +68,7 @@ Set `DATABASE_URL` before running:
 
 ```sh
 export DATABASE_URL=postgres://user:password@localhost:5432/testdb?sslmode=disable
-cd libs/migrator
+cd migrator
 go test ./... -tags integration
 ```
 
@@ -77,7 +77,7 @@ go test ./... -tags integration
 ### Test the CLI manually (no database needed)
 
 ```sh
-cd testLibs
+cd test
 go run ./cmd/migrate help
 go run ./cmd/migrate make my_test_migration
 ```
@@ -85,7 +85,7 @@ go run ./cmd/migrate make my_test_migration
 ### Build check
 
 ```sh
-cd testLibs
+cd test
 go build ./...
 ```
 
@@ -94,24 +94,23 @@ go build ./...
 ## Project Structure
 
 ```
-mtz-migrator/
-├── libs/
-│   └── migrator/
-│       ├── migration/
-│       │   ├── runner.go          ← Up, Rollback, Status, ensureStore
-│       │   ├── command.go         ← Run dispatcher, NeedsDatabase, Usage
-│       │   ├── make.go            ← Make (file generation)
-│       │   ├── files.go           ← loadFiles, file parsing
-│       │   ├── checksum.go        ← SHA-256 checksum helper
-│       │   ├── doc.go             ← Package documentation
-│       │   ├── runner_test.go
-│       │   ├── command_test.go
-│       │   ├── make_test.go
-│       │   └── files_test.go
-│       ├── README.md
-│       ├── CONTRIBUTING.md
-│       └── go.mod
-└── testLibs/                      ← Test app that consumes the library
+mtz-go-migrator/
+├── migrator/
+│   ├── migration/
+│   │   ├── runner.go          ← Up, Rollback, Status, ensureStore
+│   │   ├── command.go         ← Run dispatcher, NeedsDatabase, Usage
+│   │   ├── make.go            ← Make (file generation)
+│   │   ├── files.go           ← loadFiles, file parsing
+│   │   ├── checksum.go        ← SHA-256 checksum helper
+│   │   ├── doc.go             ← Package documentation
+│   │   ├── runner_test.go
+│   │   ├── command_test.go
+│   │   ├── make_test.go
+│   │   └── files_test.go
+│   ├── README.md
+│   ├── CONTRIBUTING.md
+│   └── go.mod
+└── test/                      ← Test app that consumes the library
     ├── cmd/
     │   ├── api/main.go            ← HTTP server (health checks)
     │   └── migrate/main.go        ← Migrator CLI entry point
@@ -161,8 +160,8 @@ case "your-command":
 3. **Make your changes** — keep commits focused and atomic
 4. **Run tests** — all tests must pass before submitting:
    ```sh
-   cd libs/migrator && go test ./...
-   cd testLibs && go build ./...
+   cd migrator && go test ./...
+   cd test && go build ./...
    ```
 5. **Open a PR** against `main` with:
    - A clear title describing the change

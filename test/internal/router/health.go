@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"net/http"
 
-	"github.com/mohit838/learn-go-with-project/internal/response"
+	"github.com/mohit838/mtz-go-migrator/test/internal/response"
 )
 
 type healthDependencies struct {

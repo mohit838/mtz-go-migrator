@@ -31,6 +31,7 @@ This repository is organized as a monorepo containing both the core library and 
 
 ```
 .
+├── go.work                    # Workspace linking the repo modules
 ├── migrator/                  # Core migration library module
 │   ├── migration/             # Migration engine implementation
 │   │   ├── checksum.go        # Integrity & checksum verification
@@ -273,6 +274,14 @@ The `test/` directory is configured as a fully working demo environment.
 ---
 
 ## Running Tests
+
+From the repository root:
+
+```sh
+go test ./migrator/... ./test/...
+```
+
+The root `go.work` file keeps the `migrator` and `test` modules in sync for local development.
 
 ### Unit Tests
 To run core library tests (no database needed):

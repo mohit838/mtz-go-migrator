@@ -1,4 +1,4 @@
-# mtz-migrator
+# mtz-go-migrator
 
 A lightweight, dependency-free SQL migration engine written in Go.
 

@@ -6,9 +6,9 @@ import (
 	"log"
 	"os"
 
+	"github.com/mohit838/mtz-go-migrator/migrator/migration"
 	"github.com/mohit838/mtz-go-migrator/test/internal/config"
 	"github.com/mohit838/mtz-go-migrator/test/internal/database"
-	"github.com/mohit838/mtz-go-migrator/migrator/migration"
 )
 
 func main() {

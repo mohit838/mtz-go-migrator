@@ -24,15 +24,15 @@ type Runner struct {
 // Config provides configuration options for the migration Runner.
 type Config struct {
 	// Dir is the directory where migration SQL files are located. Defaults to "migrations".
-	Dir         string
+	Dir string
 	// TableName is the database table name used to track applied migrations. Defaults to "schema_migrations".
-	TableName   string
+	TableName string
 	// ServiceName is an optional identifier prefixed to log lines and stored in the tracking table.
 	ServiceName string
 	// Writer specifies where logs and outputs should be written. Defaults to os.Stdout.
-	Writer      io.Writer
+	Writer io.Writer
 	// Now is a function returning the current time. Used for generating timestamps. Defaults to time.Now.
-	Now         func() time.Time
+	Now func() time.Time
 }
 
 type fileMigration struct {
@@ -127,21 +127,18 @@ func (r *Runner) Rollback(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if err := validateChecksums(files, applied); err != nil {
+		return err
+	}
 	if len(applied) == 0 {
 		r.println("Nothing to rollback.")
 		return nil
 	}
 
-	batch := latestBatch(applied)
-	toRollback := make([]fileMigration, 0)
-	for _, file := range files {
-		if appliedFile, ok := applied[file.version]; ok && appliedFile.batch == batch {
-			toRollback = append(toRollback, file)
-		}
+	toRollback, batch, err := rollbackFiles(files, applied)
+	if err != nil {
+		return err
 	}
-	sort.Slice(toRollback, func(i, j int) bool {
-		return toRollback[i].version > toRollback[j].version
-	})
 
 	for _, file := range toRollback {
 		if err := r.runDown(ctx, file); err != nil {
@@ -164,6 +161,9 @@ func (r *Runner) Status(ctx context.Context) error {
 	}
 	applied, err := r.applied(ctx)
 	if err != nil {
+		return err
+	}
+	if err := validateChecksums(files, applied); err != nil {
 		return err
 	}
 
@@ -314,6 +314,23 @@ func validateChecksums(files []fileMigration, applied map[string]appliedMigratio
 		}
 	}
 	return nil
+}
+
+func rollbackFiles(files []fileMigration, applied map[string]appliedMigration) ([]fileMigration, int, error) {
+	batch := latestBatch(applied)
+	toRollback := make([]fileMigration, 0)
+	for _, file := range files {
+		if appliedFile, ok := applied[file.version]; ok && appliedFile.batch == batch {
+			toRollback = append(toRollback, file)
+		}
+	}
+	if len(toRollback) == 0 {
+		return nil, batch, fmt.Errorf("latest migration batch %d has no matching local migration files", batch)
+	}
+	sort.Slice(toRollback, func(i, j int) bool {
+		return toRollback[i].version > toRollback[j].version
+	})
+	return toRollback, batch, nil
 }
 
 func latestBatch(applied map[string]appliedMigration) int {

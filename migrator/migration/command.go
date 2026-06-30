@@ -40,10 +40,10 @@ func NeedsDatabase(args []string) bool {
 	}
 
 	switch args[0] {
-	case "make", "create", "new", "help", "-h", "--help":
-		return false
-	default:
+	case "up", "status", "down", "rollback":
 		return true
+	default:
+		return false
 	}
 }
 

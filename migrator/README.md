@@ -1,402 +1,315 @@
 # mtz-go-migrator
 
-A lightweight, dependency-free SQL migration library for Go.
+A small SQL migration library for Go services.
 
-Handles the boring migration mechanics so your service handles the database connection.
-Built for PostgreSQL via Go's standard `database/sql` interface.
+It handles migration files, batches, rollback tracking, checksums, and status output. Your app stays responsible for opening the database connection.
 
----
+Built for PostgreSQL through Go's standard `database/sql` package. The library itself has no third-party dependencies.
 
-## Table of Contents
-
-- [Features](#features)
-- [Quick Start](#quick-start)
-- [Installation](#installation)
-- [CLI Reference](#cli-reference)
-- [API Reference](#api-reference)
-- [Migration File Format](#migration-file-format)
-- [Project Layout](#project-layout)
-- [Safety & Integrity](#safety--integrity)
-- [Production Usage](#production-usage)
-- [Contributing](#contributing)
-- [License](#license)
-
----
-
-## Features
-
-- **Paired migrations** — every change has a `.up.sql` and `.down.sql`
-- **Batch rollback** — roll back all migrations from the last `up` run at once
-- **Checksum protection** — prevents silent modification of applied migrations
-- **No database for file commands** — `make`, `create`, and `help` run without a DB connection
-- **Zero external dependencies** — uses only the Go standard library
-- **Configurable** — custom table name, migration directory, log writer, and clock
-- **Portable** — works in single-app projects and microservice monorepos
-
----
-
-## Quick Start
-
-**1. Add the library to your project:**
+## Install
 
 ```sh
 go get github.com/mohit838/mtz-go-migrator/migrator/migration
 ```
 
-**2. Create the migration CLI entry point:**
+Your app still needs a database driver. For PostgreSQL, `pgx` is a common choice:
 
-```
-cmd/migrate/main.go
-migrations/
+```sh
+go get github.com/jackc/pgx/v5/stdlib
 ```
 
-**3. Paste this into `cmd/migrate/main.go`:**
+## Quick Start
+
+Create this layout in your app:
+
+```text
+my-app/
+├── cmd/
+│   └── migrate/
+│       └── main.go
+└── migrations/
+```
+
+Add `cmd/migrate/main.go`:
 
 ```go
 package main
 
 import (
-    "context"
-    "database/sql"
-    "log"
-    "os"
+	"context"
+	"database/sql"
+	"log"
+	"os"
 
-    _ "github.com/jackc/pgx/v5/stdlib"
-    "github.com/mohit838/mtz-go-migrator/migrator/migration"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/mohit838/mtz-go-migrator/migrator/migration"
 )
 
 func main() {
-    args := os.Args[1:]
+	args := os.Args[1:]
 
-    cfg := migration.Config{
-        Dir:         "migrations",
-        ServiceName: "my-service",
-    }
+	cfg := migration.Config{
+		Dir:         "migrations",
+		ServiceName: "my-service",
+	}
 
-    // make, create, new, help — no DB needed
-    if !migration.NeedsDatabase(args) {
-        runner := migration.NewRunner(nil, cfg)
-        if err := runner.Run(context.Background(), args); err != nil {
-            log.Fatal(err)
-        }
-        return
-    }
+	if !migration.NeedsDatabase(args) {
+		runner := migration.NewRunner(nil, cfg)
+		if err := runner.Run(context.Background(), args); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 
-    // up, status, rollback — DB required
-    db, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer db.Close()
+	db, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
 
-    runner := migration.NewRunner(db, cfg)
-    if err := runner.Run(context.Background(), args); err != nil {
-        log.Fatal(err)
-    }
+	runner := migration.NewRunner(db, cfg)
+	if err := runner.Run(context.Background(), args); err != nil {
+		log.Fatal(err)
+	}
 }
 ```
 
-**4. Create your first migration:**
+Create a migration:
 
 ```sh
 go run ./cmd/migrate make create_users_table
 ```
 
-**5. Edit the generated `.up.sql` and `.down.sql`, then apply:**
+This creates two files:
 
-```sh
-go run ./cmd/migrate up
-```
-
-That's it. ✅
-
----
-
-## Installation
-
-```sh
-go get github.com/mohit838/mtz-go-migrator/migrator/migration
-```
-
-Requires Go 1.21 or later.
-
-The library has **zero external dependencies** — it only uses the Go standard library.
-
-Your project is responsible for the database driver (e.g., `github.com/jackc/pgx/v5/stdlib`).
-
----
-
-## CLI Reference
-
-All commands are run through your own `cmd/migrate/main.go`.
-
-```
-go run ./cmd/migrate [command] [name]
-```
-
-| Command | Alias | DB needed | Description |
-|---------|-------|-----------|-------------|
-| `up` | — | ✅ | Apply all pending migrations in version order |
-| `status` | — | ✅ | Print the state of every migration file |
-| `rollback` | `down` | ✅ | Roll back all migrations from the latest batch |
-| `make <name>` | `create`, `new` | ❌ | Generate a paired `.up.sql` / `.down.sql` file |
-| `help` | `-h`, `--help` | ❌ | Print usage |
-
-### Examples
-
-```sh
-# Create a new migration
-go run ./cmd/migrate make add_email_to_users
-
-# Apply pending migrations
-go run ./cmd/migrate up
-
-# Check current status
-go run ./cmd/migrate status
-
-# Roll back the latest batch
-go run ./cmd/migrate rollback
-```
-
-### Using `go -C` (Go 1.21+)
-
-Run migration commands from any directory without `cd`:
-
-```sh
-go -C services/auth run ./cmd/migrate up
-go -C services/payments run ./cmd/migrate status
-```
-
----
-
-## API Reference
-
-### `Config`
-
-```go
-type Config struct {
-    Dir         string       // Migration folder. Default: "migrations"
-    TableName   string       // Tracking table. Default: "schema_migrations"
-    ServiceName string       // Optional label for logs and tracking rows
-    Writer      io.Writer    // Log output. Default: os.Stdout
-    Now         func() time.Time // Clock for generated timestamps. Default: time.Now
-}
-```
-
-`Writer` and `Now` are mainly useful for tests and tools that want to capture output.
-
----
-
-### `NewRunner`
-
-```go
-func NewRunner(db *sql.DB, cfg Config) *Runner
-```
-
-Creates a new migration runner. Pass `nil` for `db` when running commands that don't need a database connection (`make`, `help`).
-
----
-
-### `Run`
-
-```go
-func (r *Runner) Run(ctx context.Context, args []string) error
-```
-
-Dispatches to the appropriate command based on `args[0]`. This is the main entry point used by the CLI.
-
----
-
-### `NeedsDatabase`
-
-```go
-func NeedsDatabase(args []string) bool
-```
-
-Returns `false` for `make`, `create`, `new`, `help`, `-h`, `--help`. Use this to skip opening a DB connection for commands that don't need one.
-
----
-
-### `Up`
-
-```go
-func (r *Runner) Up(ctx context.Context) error
-```
-
-Applies all pending migrations in ascending version order. Each `up` run is assigned a new batch number for rollback grouping.
-
----
-
-### `Rollback`
-
-```go
-func (r *Runner) Rollback(ctx context.Context) error
-```
-
-Rolls back all migrations from the latest batch in reverse order.
-
----
-
-### `Status`
-
-```go
-func (r *Runner) Status(ctx context.Context) error
-```
-
-Prints the version, name, and state (`pending` or `ran batch=N`) of every migration file.
-
----
-
-### `Make`
-
-```go
-func (r *Runner) Make(name string) error
-```
-
-Creates a paired `<timestamp>_<name>.up.sql` and `<timestamp>_<name>.down.sql` file in the configured directory.
-
----
-
-## Migration File Format
-
-Each migration is a pair of SQL files:
-
-```
+```text
 migrations/
-├── 20260627120000_create_users_table.up.sql    ← applies the change
-└── 20260627120000_create_users_table.down.sql  ← rolls it back
+├── 20260627120000_create_users_table.up.sql
+└── 20260627120000_create_users_table.down.sql
 ```
 
-**Naming rules:**
-- Version is a 14-digit UTC timestamp: `YYYYMMDDHHMMSS`
-- Name is lowercase with underscores: `create_users_table`
-- Both `.up.sql` and `.down.sql` are required — an unpaired file is an error
-
-**Example `.up.sql`:**
+Example `20260627120000_create_users_table.up.sql`:
 
 ```sql
 CREATE TABLE users (
-    id         BIGSERIAL PRIMARY KEY,
-    email      TEXT        NOT NULL UNIQUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+	id BIGSERIAL PRIMARY KEY,
+	email TEXT NOT NULL UNIQUE,
+	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```
 
-**Example `.down.sql`:**
+Example `20260627120000_create_users_table.down.sql`:
 
 ```sql
 DROP TABLE IF EXISTS users;
 ```
 
-> [!WARNING]
-> Do **not** edit a `.up.sql` file after it has been applied. The checksum will no longer match and the next `up` will fail. Create a new migration instead.
-
----
-
-## Tracking Table
-
-The library creates a `schema_migrations` table automatically on the first `up` or `status` run:
-
-```sql
-CREATE TABLE schema_migrations (
-    id           BIGSERIAL PRIMARY KEY,
-    version      TEXT        NOT NULL UNIQUE,
-    name         TEXT        NOT NULL,
-    service_name TEXT        NOT NULL DEFAULT '',
-    batch        INTEGER     NOT NULL,
-    checksum     TEXT        NOT NULL,
-    applied_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    execution_ms BIGINT      NOT NULL DEFAULT 0
-);
-```
-
-Override the table name in `Config.TableName` if needed.
-
----
-
-## Project Layout
-
-### Single app
-
-```
-my-app/
-├── cmd/
-│   └── migrate/
-│       └── main.go
-├── migrations/
-│   ├── 20260627120000_create_users_table.up.sql
-│   └── 20260627120000_create_users_table.down.sql
-└── ...
-```
-
-### Microservice monorepo
-
-Each service owns its DB connection, its `.env`, and its `migrations/` folder:
-
-```
-services/
-├── auth/
-│   ├── cmd/migrate/main.go
-│   └── migrations/
-├── payments/
-│   ├── cmd/migrate/main.go
-│   └── migrations/
-└── notifications/
-    ├── cmd/migrate/main.go
-    └── migrations/
-```
-
-Run from the repo root:
+Apply the migration:
 
 ```sh
-go -C services/auth     run ./cmd/migrate up
+DATABASE_URL='postgres://user:pass@localhost:5432/app?sslmode=disable' go run ./cmd/migrate up
+```
+
+Check status:
+
+```sh
+go run ./cmd/migrate status
+```
+
+Rollback the latest batch:
+
+```sh
+go run ./cmd/migrate rollback
+```
+
+## Commands
+
+Run commands through your own `cmd/migrate` program:
+
+```sh
+go run ./cmd/migrate [command] [name]
+```
+
+| Command | Aliases | Needs DB | What it does |
+|---------|---------|----------|--------------|
+| `up` | none | Yes | Runs all pending `.up.sql` files in version order |
+| `status` | none | Yes | Prints each local migration as `pending` or `ran batch=N` |
+| `rollback` | `down` | Yes | Runs `.down.sql` files from the latest batch in reverse order |
+| `make <name>` | `create`, `new` | No | Creates paired `.up.sql` and `.down.sql` files |
+| `help` | `-h`, `--help` | No | Prints usage |
+
+Useful examples:
+
+```sh
+go run ./cmd/migrate make add_email_to_users
+go run ./cmd/migrate up
+go run ./cmd/migrate status
+go run ./cmd/migrate rollback
+go run ./cmd/migrate down
+go run ./cmd/migrate help
+```
+
+From a monorepo root, use `go -C`:
+
+```sh
+go -C services/auth run ./cmd/migrate up
 go -C services/payments run ./cmd/migrate status
 ```
 
----
+## Migration File Rules
 
-## Safety & Integrity
+Migration files must be paired:
 
-| Rule | Behaviour |
-|------|-----------|
-| Checksum protection | `up` fails if a previously-applied `.up.sql` has been modified |
-| Paired files required | An `.up.sql` without a matching `.down.sql` (or vice versa) is an error |
-| Version format enforced | Versions must be 14-digit timestamps |
-| Safe table identifier | `TableName` is validated to contain only `[a-zA-Z0-9_]` with a letter or `_` first |
-| No overwrite on `make` | Generated files are never overwritten |
-| Transactional execution | Each migration runs inside a transaction; failure rolls back the SQL and the tracking row |
+```text
+<14-digit-version>_<name>.up.sql
+<14-digit-version>_<name>.down.sql
+```
 
----
+Example:
+
+```text
+20260627120000_create_users_table.up.sql
+20260627120000_create_users_table.down.sql
+```
+
+Rules:
+
+- The version must be a 14-digit UTC timestamp: `YYYYMMDDHHMMSS`.
+- The name should use lowercase words separated by underscores.
+- Every `.up.sql` file must have a matching `.down.sql` file.
+- Every `.down.sql` file must have a matching `.up.sql` file.
+- Do not edit an applied `.up.sql` file. Create a new migration instead.
+
+## API
+
+### `Config`
+
+```go
+type Config struct {
+	Dir         string
+	TableName   string
+	ServiceName string
+	Writer      io.Writer
+	Now         func() time.Time
+}
+```
+
+Defaults:
+
+| Field | Default | Purpose |
+|-------|---------|---------|
+| `Dir` | `migrations` | Folder containing SQL migration files |
+| `TableName` | `schema_migrations` | Database table used to track applied migrations |
+| `ServiceName` | empty | Optional label stored in tracking rows and printed in logs |
+| `Writer` | `os.Stdout` | Destination for command output |
+| `Now` | `time.Now` | Clock used when generating migration filenames |
+
+### `NewRunner`
+
+```go
+runner := migration.NewRunner(db, migration.Config{
+	Dir:         "migrations",
+	TableName:   "schema_migrations",
+	ServiceName: "billing",
+})
+```
+
+Pass `nil` for `db` when running commands that do not need a database:
+
+```go
+runner := migration.NewRunner(nil, migration.Config{Dir: "migrations"})
+err := runner.Run(context.Background(), []string{"make", "create_orders_table"})
+```
+
+### `Run`
+
+```go
+err := runner.Run(context.Background(), os.Args[1:])
+```
+
+`Run` is the easiest entry point for a CLI. It dispatches to `Up`, `Status`, `Rollback`, or `Make`.
+
+### `NeedsDatabase`
+
+```go
+if migration.NeedsDatabase(os.Args[1:]) {
+	// Open the database connection.
+}
+```
+
+Returns `true` only for `up`, `status`, `rollback`, and `down`.
+
+### Direct Method Usage
+
+You can call methods directly when you do not want a CLI dispatcher:
+
+```go
+runner := migration.NewRunner(db, migration.Config{Dir: "migrations"})
+
+if err := runner.Up(context.Background()); err != nil {
+	log.Fatal(err)
+}
+```
+
+Available methods:
+
+- `Up(ctx)` applies pending migrations.
+- `Status(ctx)` prints local migration status.
+- `Rollback(ctx)` rolls back the latest batch.
+- `Make(name)` creates paired migration files.
+
+## Tracking Table
+
+The runner creates the tracking table automatically on `up`, `status`, or `rollback`:
+
+```sql
+CREATE TABLE schema_migrations (
+	id BIGSERIAL PRIMARY KEY,
+	version TEXT NOT NULL UNIQUE,
+	name TEXT NOT NULL,
+	service_name TEXT NOT NULL DEFAULT '',
+	batch INTEGER NOT NULL,
+	checksum TEXT NOT NULL,
+	applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	execution_ms BIGINT NOT NULL DEFAULT 0
+);
+```
+
+Use `Config.TableName` when each service or tenant needs a separate tracking table.
+
+## Safety Behavior
+
+- Each migration runs inside a database transaction.
+- Applied `.up.sql` files are protected by SHA-256 checksums.
+- `up`, `status`, and `rollback` fail if an applied `.up.sql` file was changed.
+- `rollback` fails clearly if the latest applied batch no longer has matching local migration files.
+- Generated files use `O_EXCL`, so `make` never overwrites existing files.
+- `TableName` is validated before it is used in SQL.
 
 ## Production Usage
 
-> [!IMPORTANT]
-> **Do not run migrations inside the API server process.**
-
-Run migrations only during deploy when there is a schema change:
+Run migrations as a deploy step before starting the new application version:
 
 ```sh
-# In CI/CD, before starting the new server binary
-go -C services/auth run ./cmd/migrate up
+go run ./cmd/migrate up
 ```
 
-If there is no schema change this deploy, skip the migration step entirely.
+Avoid running migrations from normal API server startup. In multi-instance deployments, startup migrations can run concurrently and fight over schema changes.
 
----
+## Tests
 
-## Contributing
+From this module:
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full guide.
+```sh
+go test ./...
+```
 
-Short version:
+From the repository root:
 
-1. Fork the repo and create a feature branch
-2. Make your change
-3. Run `go test ./...` — all tests must pass
-4. Open a pull request with a clear description
-
----
+```sh
+go test ./migrator/...
+```
 
 ## License
 
-MIT — see [LICENSE](./LICENSE) for details.
+MIT

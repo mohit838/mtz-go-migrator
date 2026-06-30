@@ -68,7 +68,9 @@ func TestNeedsDatabase(t *testing.T) {
 		"new":      {args: []string{"new", "create_users_table"}, want: false},
 		"up":       {args: []string{"up"}, want: true},
 		"status":   {args: []string{"status"}, want: true},
+		"down":     {args: []string{"down"}, want: true},
 		"rollback": {args: []string{"rollback"}, want: true},
+		"unknown":  {args: []string{"stats"}, want: false},
 	}
 	for name, tt := range tests {
 		if got := NeedsDatabase(tt.args); got != tt.want {
